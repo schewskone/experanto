@@ -313,7 +313,7 @@ class ChunkDataset(Dataset):
                     if isinstance(v, torch.nn.Module)
                 ]
                 transform_list.insert(0, add_channel)
-                
+
             else:
                 transform_list = [lambda x: torch.from_numpy(x).float()]
                 transform_list = [
