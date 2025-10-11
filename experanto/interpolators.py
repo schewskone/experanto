@@ -57,7 +57,8 @@ class Interpolator:
             else:
                 return SequenceInterpolator(root_folder, cache_data, **kwargs)
         elif modality == "screen":
-            return ScreenInterpolator(root_folder, cache_data, **kwargs)
+            image_names = meta_data.get("image_names", False)
+            return ScreenInterpolator(root_folder, cache_data, image_names, **kwargs)
         else:
             raise ValueError(
                 f"There is no interpolator for {modality}. Please use 'sequence' or 'screen' as modality."
@@ -319,6 +320,7 @@ class ScreenInterpolator(Interpolator):
         self,
         root_folder: str,
         cache_data: bool = False,  # New parameter
+        image_names: bool = False,
         rescale: bool = False,
         rescale_size: typing.Optional[tuple(int, int)] = None,
         normalize: bool = False,
@@ -334,6 +336,7 @@ class ScreenInterpolator(Interpolator):
         self.end_time = self.timestamps[-1]
         self.valid_interval = TimeInterval(self.start_time, self.end_time)
         self.rescale = rescale
+        self.image_names = image_names
         self.cache_trials = cache_data  # Store the cache preference
         self._parse_trials()
 
@@ -419,8 +422,11 @@ class ScreenInterpolator(Interpolator):
         metadatas, keys = self.read_combined_meta()
 
         for key, metadata in zip(keys, metadatas):
-            data_file_name = self.root_folder / "data" / f"{key}.npy"
-            # Pass the cache_trials parameter when creating trials
+            if self.image_names:
+                image_name = metadata.get("image_name")
+                data_file_name = self.root_folder / "data" / f"{image_name}.npy"
+            else:
+                data_file_name = self.root_folder / "data" / f"{key}.npy"
             self.trials.append(
                 ScreenTrial.create(
                     data_file_name, metadata, cache_data=self.cache_trials
