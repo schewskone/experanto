@@ -27,6 +27,24 @@ from .intervals import TimeInterval
 
 
 def replace_nan_with_batch_mean(data: np.array) -> np.array:
+    """
+    Replace NaN values in data with the mean of each column.
+    
+    For each column, NaN values are replaced with the mean of non-NaN values in that column.
+    If all values in a column are NaN, they are replaced with 0.
+    
+    Args:
+        data (np.ndarray): Input array of shape (rows, cols) potentially containing NaN values.
+    
+    Returns:
+        np.ndarray: Array with NaN values replaced by column means.
+    
+    Example:
+        >>> data = np.array([[1.0, np.nan], [2.0, 3.0], [np.nan, 4.0]])
+        >>> clean_data = replace_nan_with_batch_mean(data)
+        >>> # NaN at [0,1] replaced with mean of [3.0, 4.0] = 3.5
+        >>> # NaN at [2,0] replaced with mean of [1.0, 2.0] = 1.5
+    """
     row, col = np.where(np.isnan(data))
     for i, j in zip(row, col):
         new_value = np.nanmean(data[:, j])
@@ -36,20 +54,44 @@ def replace_nan_with_batch_mean(data: np.array) -> np.array:
 
 def add_behavior_as_channels(data: dict[str, torch.Tensor]) -> dict:
     """
-    Adds behavioral data as additional channels to screen data.
-
-    Input:
-    data = {
-        'screen': torch.Tensor: (c, t, h, w)
-        'eye_tracker': torch.Tensor: (t, c_eye) or (t, h, w)
-        'treadmill': torch.Tensor: (t, c_tread) or (t, h, w)
-    }
-
-    Output:
-    data = {
-        'screen': torch.Tensor: (c+behavior_channels, t, h, w) - contiguous
-        ...
-    }
+    Add behavioral data as additional channels to screen data.
+    
+    This function takes behavioral signals (eye tracker, treadmill) and adds them as
+    extra channels to the screen tensor, enabling joint processing of visual and
+    behavioral data in neural networks.
+    
+    Args:
+        data (dict): Dictionary containing:
+            - 'screen': torch.Tensor of shape (c, t, h, w) - visual stimulus
+            - 'eye_tracker': torch.Tensor of shape (t, c_eye) or (t, h, w) - eye tracking data
+            - 'treadmill': torch.Tensor of shape (t, c_tread) or (t, h, w) - treadmill data
+    
+    Returns:
+        dict: Modified data dictionary where 'screen' has shape 
+            (c+c_eye+c_tread, t, h, w) with behavioral data concatenated as channels.
+    
+    Example:
+        >>> data = {
+        ...     'screen': torch.randn(3, 100, 144, 256),  # RGB video
+        ...     'eye_tracker': torch.randn(100, 2),       # x, y position
+        ...     'treadmill': torch.randn(100, 1)          # speed
+        ... }
+        >>> data = add_behavior_as_channels(data)
+        >>> print(data['screen'].shape)  # torch.Size([6, 100, 144, 256])
+    
+    Note:
+        Input:
+            data = {
+                'screen': torch.Tensor: (c, t, h, w)
+                'eye_tracker': torch.Tensor: (t, c_eye) or (t, h, w)
+                'treadmill': torch.Tensor: (t, c_tread) or (t, h, w)
+            }
+        
+        Output:
+            data = {
+                'screen': torch.Tensor: (c+behavior_channels, t, h, w) - contiguous
+                ...
+            }
     """
     screen = data["screen"]  # Already contiguous, shape (c, t, h, w)
     c, t, h, w = screen.shape
@@ -91,10 +133,24 @@ def add_behavior_as_channels(data: dict[str, torch.Tensor]) -> dict:
 
 
 class MultiEpochsDataLoader(torch.utils.data.DataLoader):
-    """solves bug to keep all workers initialized across epochs.
-    From https://discuss.pytorch.org/t/enumerate-dataloader-slow/87778
-    and
-    https://github.com/huggingface/pytorch-image-models/blob/d72ac0db259275233877be8c1d4872163954dfbb/timm/data/loader.py#L209-L238
+    """
+    DataLoader that maintains worker processes across epochs for better performance.
+    
+    Solves the bug where worker processes are reinitialized at each epoch, improving
+    training speed for datasets with expensive worker initialization.
+    
+    Based on discussions:
+    - https://discuss.pytorch.org/t/enumerate-dataloader-slow/87778
+    - https://github.com/huggingface/pytorch-image-models
+    
+    Example:
+        >>> from torch.utils.data import Dataset
+        >>> dataset = ChunkDataset(...)
+        >>> loader = MultiEpochsDataLoader(dataset, batch_size=32, num_workers=4)
+        >>> for epoch in range(10):
+        ...     for batch in loader:
+        ...         # Process batch
+        ...         pass
     """
 
     def __init__(

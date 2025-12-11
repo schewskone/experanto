@@ -33,6 +33,22 @@ DEFAULT_MODALITY_CONFIG = dict()
 
 
 class SimpleChunkedDataset(Dataset):
+    """
+    A simple dataset that chunks experimental data into fixed-size temporal segments.
+    
+    This dataset loads data from an experiment folder and divides it into consecutive
+    chunks of fixed duration, useful for training on temporal sequences.
+    
+    Example:
+        >>> dataset = SimpleChunkedDataset(
+        ...     root_folder="path/to/experiment",
+        ...     sampling_rate=30.0,  # 30 Hz
+        ...     chunk_size=150  # 5 seconds at 30 Hz
+        ... )
+        >>> print(f"Dataset has {len(dataset)} chunks")
+        >>> data = dataset[0]  # Get first chunk
+    """
+    
     def __init__(
         self,
         root_folder: str,
@@ -40,6 +56,17 @@ class SimpleChunkedDataset(Dataset):
         chunk_size: int,
         interp_config: dict = DEFAULT_MODALITY_CONFIG,
     ) -> None:
+        """
+        Initialize a SimpleChunkedDataset.
+        
+        Args:
+            root_folder (str): Path to the experiment data folder containing device subfolders.
+            sampling_rate (float): Sampling rate in Hz for data interpolation (e.g., 30.0 for 30 Hz).
+            chunk_size (int): Number of time samples per chunk. For example, chunk_size=150
+                at 30 Hz sampling rate gives 5-second chunks.
+            interp_config (dict, optional): Configuration dictionary for interpolators.
+                Defaults to DEFAULT_MODALITY_CONFIG.
+        """
         self.root_folder = Path(root_folder)
         self.sampling_rate = sampling_rate
         self.chunk_size = chunk_size
@@ -72,6 +99,37 @@ class SimpleChunkedDataset(Dataset):
 
 
 class ChunkDataset(Dataset):
+    """
+    Advanced dataset for chunking experimental data with flexible modality configurations.
+    
+    ChunkDataset provides sophisticated control over data loading, including per-modality
+    sampling rates, transforms, filtering based on experimental conditions, and handling
+    of multiple synchronized data streams (screen, neural responses, eye tracking, etc.).
+    
+    Example:
+        >>> config = {
+        ...     'screen': {
+        ...         'sampling_rate': 30.0,
+        ...         'chunk_size': 150,
+        ...         'valid_condition': {'tier': 'test'},
+        ...         'interpolation': {}
+        ...     },
+        ...     'responses': {
+        ...         'sampling_rate': 30.0,
+        ...         'chunk_size': 150,
+        ...         'offset': 0.1,
+        ...         'interpolation': {'interpolation_mode': 'nearest_neighbor'}
+        ...     }
+        ... }
+        >>> dataset = ChunkDataset(
+        ...     root_folder="path/to/data",
+        ...     global_sampling_rate=30.0,
+        ...     global_chunk_size=150,
+        ...     modality_config=config,
+        ...     cache_data=True
+        ... )
+    """
+    
     def __init__(
         self,
         root_folder: str,
@@ -88,60 +146,63 @@ class ChunkDataset(Dataset):
         interpolate_precision: int = 5,
     ) -> None:
         """
-        interpolate_precision: number of digits after the dot to keep, without it we might get different numbers from interpolation
-
-        The full modality config is a nested dictionary.
-        The following is an example of a modality config for a screen, responses, eye_tracker, and treadmill:
-
-        screen:
-          sampling_rate: null
-          chunk_size: null
-          valid_condition:
-            tier: test
-            stim_type: stimulus.Frame
-          offset: 0
-          sample_stride: 4
-          include_blanks: false
-          transforms:
-            ToTensor:
-              _target_: torchvision.transforms.ToTensor
-            Normalize:
-              _target_: torchvision.transforms.Normalize
-              mean: 80.0
-              std: 60.0
-            Resize:
-              _target_: torchvision.transforms.Resize
-              size:
-              - 144
-              - 256
-            CenterCrop:
-              _target_: torchvision.transforms.CenterCrop
-              size: 144
-          interpolation: {}
-        responses:
-          sampling_rate: null
-          chunk_size: null
-          offset: 0.1
-          transforms:
-            standardize: true
-          interpolation:
-            interpolation_mode: nearest_neighbor
-        eye_tracker:
-          sampling_rate: null
-          chunk_size: null
-          offset: 0
-          transforms:
-            normalize: true
-          interpolation:
-            interpolation_mode: nearest_neighbor
-        treadmill:
-          sampling_rate: null
-          chunk_size: null
-          offset: 0
-          transforms:
-            normalize: true
-          interpolation:
-            interpolation_mode: nearest_neighbor
+        Initialize a ChunkDataset with advanced configuration options.
+        
+        Args:
+            root_folder (str): Path to the experiment data folder.
+            global_sampling_rate (float, optional): Global sampling rate in Hz that overrides
+                per-modality rates if specified. If None, uses per-modality rates from config.
+            global_chunk_size (int, optional): Global chunk size that overrides per-modality
+                sizes if specified. If None, uses per-modality sizes from config.
+            add_behavior_as_channels (bool, optional): If True, adds behavioral data (eye tracker,
+                treadmill) as additional channels to screen data. Defaults to False.
+            replace_nans_with_means (bool, optional): If True, replaces NaN values with batch means.
+                Defaults to False.
+            cache_data (bool, optional): If True, caches all data in memory for faster access.
+                Defaults to False.
+            out_keys (Iterable, optional): List of keys to include in output. If None, includes
+                all device names plus 'timestamps'. Defaults to None.
+            normalize_timestamps (bool, optional): If True, normalizes timestamps to start from 0
+                for each chunk. Defaults to True.
+            modality_config (dict, optional): Nested configuration dictionary for each modality.
+                Each modality key should contain: 'sampling_rate', 'chunk_size', 'offset',
+                'transforms', 'interpolation', and optionally 'valid_condition' for filtering.
+                See example in class docstring. Defaults to DEFAULT_MODALITY_CONFIG.
+            seed (int, optional): Random seed for reproducibility. Defaults to None.
+            safe_interval_threshold (float, optional): Safety margin in seconds to add/subtract
+                from start/end times to avoid boundary issues. Defaults to 0.5.
+            interpolate_precision (int, optional): Number of decimal digits to keep for time values
+                to ensure consistent interpolation results. Defaults to 5.
+        
+        Modality Config Structure:
+            The modality_config is a nested dictionary with the following structure for each device:
+            
+            .. code-block:: yaml
+            
+                screen:
+                  sampling_rate: 30.0  # Hz
+                  chunk_size: 150      # samples
+                  valid_condition:     # Optional filtering
+                    tier: test
+                    stim_type: stimulus.Frame
+                  offset: 0            # seconds
+                  sample_stride: 4     # stride for chunk start positions
+                  include_blanks: false
+                  transforms:          # Torchvision transforms
+                    ToTensor: {}
+                    Normalize:
+                      mean: 80.0
+                      std: 60.0
+                  interpolation: {}
+                
+                responses:
+                  sampling_rate: 30.0
+                  chunk_size: 150
+                  offset: 0.1          # 100ms offset for neural responses
+                  transforms:
+                    standardize: true
+                  interpolation:
+                    interpolation_mode: nearest_neighbor
         """
         self.root_folder = Path(root_folder)
         self.data_key = self.get_data_key_from_root_folder(root_folder)
