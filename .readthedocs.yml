@@ -9,7 +9,13 @@ build:
 python:
   install:
     - requirements: docs/source/requirements.txt
+    - method: pip
+      path: .
 
 sphinx:
   configuration: docs/source/conf.py
+
+formats:
+  - pdf
+  - epub
 

@@ -26,4 +26,6 @@ pip install -e /path_to/sensorium_2023
 
 Ensure you replace `/path_to/` with the actual path to the cloned repositories.
 
-You can also check out our readthedocs documentation!
+## Documentation
+
+Full documentation is available on [Read the Docs](https://experanto.readthedocs.io/).

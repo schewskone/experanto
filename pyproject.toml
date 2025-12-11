@@ -15,7 +15,7 @@ include = ["experanto*", "configs"]
 "configs" = ["*.yaml"]
 
 [project.urls]
-Homepage = "https://github.com/sensorium-competition/experanto"
+Homepage = "https://github.com/schewskone/experanto"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
