@@ -177,32 +177,40 @@ class ChunkDataset(Dataset):
         Modality Config Structure:
             The modality_config is a nested dictionary with the following structure for each device:
             
-            .. code-block:: yaml
+            .. code-block:: python
             
-                screen:
-                  sampling_rate: 30.0  # Hz
-                  chunk_size: 150      # samples
-                  valid_condition:     # Optional filtering
-                    tier: test
-                    stim_type: stimulus.Frame
-                  offset: 0            # seconds
-                  sample_stride: 4     # stride for chunk start positions
-                  include_blanks: false
-                  transforms:          # Torchvision transforms
-                    ToTensor: {}
-                    Normalize:
-                      mean: 80.0
-                      std: 60.0
-                  interpolation: {}
-                
-                responses:
-                  sampling_rate: 30.0
-                  chunk_size: 150
-                  offset: 0.1          # 100ms offset for neural responses
-                  transforms:
-                    standardize: true
-                  interpolation:
-                    interpolation_mode: nearest_neighbor
+                {
+                    'screen': {
+                        'sampling_rate': 30.0,  # Hz
+                        'chunk_size': 150,      # samples
+                        'valid_condition': {    # Optional filtering
+                            'tier': 'test',
+                            'stim_type': 'stimulus.Frame'
+                        },
+                        'offset': 0,            # seconds
+                        'sample_stride': 4,     # stride for chunk start positions
+                        'include_blanks': False,
+                        'transforms': {         # Torchvision transforms
+                            'ToTensor': {},
+                            'Normalize': {
+                                'mean': 80.0,
+                                'std': 60.0
+                            }
+                        },
+                        'interpolation': {}
+                    },
+                    'responses': {
+                        'sampling_rate': 30.0,
+                        'chunk_size': 150,
+                        'offset': 0.1,          # 100ms offset for neural responses
+                        'transforms': {
+                            'standardize': True
+                        },
+                        'interpolation': {
+                            'interpolation_mode': 'nearest_neighbor'
+                        }
+                    }
+                }
         """
         self.root_folder = Path(root_folder)
         self.data_key = self.get_data_key_from_root_folder(root_folder)

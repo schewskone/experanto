@@ -78,20 +78,6 @@ def add_behavior_as_channels(data: dict[str, torch.Tensor]) -> dict:
         ... }
         >>> data = add_behavior_as_channels(data)
         >>> print(data['screen'].shape)  # torch.Size([6, 100, 144, 256])
-    
-    Note:
-        Input:
-            data = {
-                'screen': torch.Tensor: (c, t, h, w)
-                'eye_tracker': torch.Tensor: (t, c_eye) or (t, h, w)
-                'treadmill': torch.Tensor: (t, c_tread) or (t, h, w)
-            }
-        
-        Output:
-            data = {
-                'screen': torch.Tensor: (c+behavior_channels, t, h, w) - contiguous
-                ...
-            }
     """
     screen = data["screen"]  # Already contiguous, shape (c, t, h, w)
     c, t, h, w = screen.shape

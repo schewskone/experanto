@@ -239,6 +239,21 @@ class SequenceInterpolator(Interpolator):
         return data
 
     def interpolate(self, times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Interpolate sequence data at specified time points.
+        
+        Args:
+            times (np.ndarray): Array of time points (in seconds) at which to interpolate.
+        
+        Returns:
+            tuple: A tuple of (data, valid_mask) where:
+                - data: Interpolated values of shape (n_valid_times, n_signals)
+                - valid_mask: Boolean mask indicating which requested times have valid data
+        
+        Note:
+            The interpolation method (nearest_neighbor or linear) is determined by the
+            interpolation_mode parameter set during initialization.
+        """
         valid = self.valid_times(times)
         valid_times = times[valid]
 
