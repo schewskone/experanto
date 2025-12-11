@@ -17,7 +17,20 @@ from .intervals import TimeInterval
 
 
 class Interpolator:
+    """
+    Base class for interpolating experimental data at arbitrary time points.
+
+    Interpolators provide a unified interface for accessing data from different recording
+    modalities (screen stimuli, neural responses, behavioral data) at specified timestamps.
+    """
+
     def __init__(self, root_folder: str) -> None:
+        """
+        Initialize an Interpolator.
+
+        Args:
+            root_folder (str): Path to the folder containing the modality data and meta.yml file.
+        """
         self.root_folder = Path(root_folder)
         self.start_time = None
         self.end_time = None
@@ -25,6 +38,13 @@ class Interpolator:
         self.valid_interval = None
 
     def load_meta(self):
+        """
+        Load metadata from the meta.yml file in the root folder.
+
+        Returns:
+            dict: Metadata dictionary containing information like sampling_rate, start_time,
+                end_time, modality, and data shape.
+        """
         with open(self.root_folder / "meta.yml") as f:
             meta = yaml.load(f, Loader=yaml.SafeLoader)
         return meta
@@ -45,6 +65,30 @@ class Interpolator:
 
     @staticmethod
     def create(root_folder: str, cache_data: bool = False, **kwargs) -> "Interpolator":
+        """
+        Factory method to create the appropriate Interpolator subclass based on modality.
+
+        This method reads the meta.yml file to determine the data modality and instantiates
+        the corresponding interpolator class.
+
+        Args:
+            root_folder (str): Path to the folder containing modality data.
+            cache_data (bool, optional): If True, loads data into memory instead of using
+                memory-mapped files. Defaults to False.
+            **kwargs: Additional keyword arguments passed to the specific interpolator constructor.
+
+        Returns:
+            Interpolator: An instance of the appropriate interpolator subclass
+                (SequenceInterpolator, PhaseShiftedSequenceInterpolator, ScreenInterpolator,
+                or TimeIntervalInterpolator).
+
+        Raises:
+            ValueError: If the modality is not recognized or supported.
+
+        Example:
+            >>> interp = Interpolator.create("path/to/responses", cache_data=True)
+            >>> values, valid = interp.interpolate(times=np.linspace(0, 1, 100))
+        """
         with open(Path(root_folder) / "meta.yml", "r") as file:
             meta_data = yaml.load(file, Loader=yaml.SafeLoader)
         modality = meta_data.get("modality")
@@ -66,6 +110,15 @@ class Interpolator:
             )
 
     def valid_times(self, times: np.ndarray) -> np.ndarray:
+        """
+        Get indices of time points that fall within the valid interval.
+
+        Args:
+            times (np.ndarray): Array of time points to check.
+
+        Returns:
+            np.ndarray: Array of indices where times are valid.
+        """
         return self.valid_interval.intersect(times)
 
     def close(self):
@@ -75,6 +128,23 @@ class Interpolator:
 
 
 class SequenceInterpolator(Interpolator):
+    """
+    Interpolator for sequential time-series data (e.g., neural responses, behavioral signals).
+
+    Supports both nearest-neighbor and linear interpolation modes with optional normalization.
+    Data can be loaded from memory-mapped files (.mem) or numpy arrays (.npy).
+
+    Example:
+        >>> interp = SequenceInterpolator(
+        ...     root_folder="path/to/responses",
+        ...     cache_data=True,
+        ...     interpolation_mode="linear",
+        ...     normalize=True
+        ... )
+        >>> times = np.linspace(0, 10, 100)
+        >>> values, valid = interp.interpolate(times)
+    """
+
     def __init__(
         self,
         root_folder: str,
@@ -87,8 +157,26 @@ class SequenceInterpolator(Interpolator):
         **kwargs,
     ) -> None:
         """
-        interpolation_mode - nearest neighbor or linear
-        keep_nans - if we keep nans in linear interpolation
+        Initialize a SequenceInterpolator.
+
+        Args:
+            root_folder (str): Path to the folder containing sequence data.
+            cache_data (bool, optional): If True, converts memory-mapped data to in-memory
+                numpy array for faster access. Defaults to False.
+            keep_nans (bool, optional): If True, keeps NaN values during linear interpolation.
+                If False, NaNs are interpolated over. Defaults to False.
+            interpolation_mode (str, optional): Interpolation method. Options are:
+                - 'nearest_neighbor': Use nearest available data point
+                - 'linear': Linear interpolation between data points
+                Defaults to 'nearest_neighbor'.
+            normalize (bool, optional): If True, normalizes data using pre-computed mean and std.
+                Requires mean and std files in meta/ subfolder. Defaults to False.
+            normalize_subtract_mean (bool, optional): If True, subtracts mean before scaling.
+                Only used when normalize=True. Defaults to False.
+            normalize_std_threshold (float, optional): Minimum std threshold for normalization.
+                Signals with std below this threshold use the threshold value for scaling.
+                Defaults to None (no threshold).
+            **kwargs: Additional keyword arguments (ignored).
         """
         super().__init__(root_folder)
         meta = self.load_meta()
@@ -151,6 +239,21 @@ class SequenceInterpolator(Interpolator):
         return data
 
     def interpolate(self, times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Interpolate sequence data at specified time points.
+
+        Args:
+            times (np.ndarray): Array of time points (in seconds) at which to interpolate.
+
+        Returns:
+            tuple: A tuple of (data, valid_mask) where:
+                - data: Interpolated values of shape (n_valid_times, n_signals)
+                - valid_mask: Boolean mask indicating which requested times have valid data
+
+        Note:
+            The interpolation method (nearest_neighbor or linear) is determined by the
+            interpolation_mode parameter set during initialization.
+        """
         valid = self.valid_times(times)
         valid_times = times[valid]
 

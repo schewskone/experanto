@@ -27,6 +27,24 @@ from .intervals import TimeInterval
 
 
 def replace_nan_with_batch_mean(data: np.array) -> np.array:
+    """
+    Replace NaN values in data with the mean of each column.
+
+    For each column, NaN values are replaced with the mean of non-NaN values in that column.
+    If all values in a column are NaN, they are replaced with 0.
+
+    Args:
+        data (np.ndarray): Input array of shape (rows, cols) potentially containing NaN values.
+
+    Returns:
+        np.ndarray: Array with NaN values replaced by column means.
+
+    Example:
+        >>> data = np.array([[1.0, np.nan], [2.0, 3.0], [np.nan, 4.0]])
+        >>> clean_data = replace_nan_with_batch_mean(data)
+        >>> # NaN at [0,1] replaced with mean of [3.0, 4.0] = 3.5
+        >>> # NaN at [2,0] replaced with mean of [1.0, 2.0] = 1.5
+    """
     row, col = np.where(np.isnan(data))
     for i, j in zip(row, col):
         new_value = np.nanmean(data[:, j])
@@ -36,20 +54,30 @@ def replace_nan_with_batch_mean(data: np.array) -> np.array:
 
 def add_behavior_as_channels(data: dict[str, torch.Tensor]) -> dict:
     """
-    Adds behavioral data as additional channels to screen data.
+    Add behavioral data as additional channels to screen data.
 
-    Input:
-    data = {
-        'screen': torch.Tensor: (c, t, h, w)
-        'eye_tracker': torch.Tensor: (t, c_eye) or (t, h, w)
-        'treadmill': torch.Tensor: (t, c_tread) or (t, h, w)
-    }
+    This function takes behavioral signals (eye tracker, treadmill) and adds them as
+    extra channels to the screen tensor, enabling joint processing of visual and
+    behavioral data in neural networks.
 
-    Output:
-    data = {
-        'screen': torch.Tensor: (c+behavior_channels, t, h, w) - contiguous
-        ...
-    }
+    Args:
+        data (dict): Dictionary containing:
+            - 'screen': torch.Tensor of shape (c, t, h, w) - visual stimulus
+            - 'eye_tracker': torch.Tensor of shape (t, c_eye) or (t, h, w) - eye tracking data
+            - 'treadmill': torch.Tensor of shape (t, c_tread) or (t, h, w) - treadmill data
+
+    Returns:
+        dict: Modified data dictionary where 'screen' has shape
+            (c+c_eye+c_tread, t, h, w) with behavioral data concatenated as channels.
+
+    Example:
+        >>> data = {
+        ...     'screen': torch.randn(3, 100, 144, 256),  # RGB video
+        ...     'eye_tracker': torch.randn(100, 2),       # x, y position
+        ...     'treadmill': torch.randn(100, 1)          # speed
+        ... }
+        >>> data = add_behavior_as_channels(data)
+        >>> print(data['screen'].shape)  # torch.Size([6, 100, 144, 256])
     """
     screen = data["screen"]  # Already contiguous, shape (c, t, h, w)
     c, t, h, w = screen.shape
@@ -91,10 +119,24 @@ def add_behavior_as_channels(data: dict[str, torch.Tensor]) -> dict:
 
 
 class MultiEpochsDataLoader(torch.utils.data.DataLoader):
-    """solves bug to keep all workers initialized across epochs.
-    From https://discuss.pytorch.org/t/enumerate-dataloader-slow/87778
-    and
-    https://github.com/huggingface/pytorch-image-models/blob/d72ac0db259275233877be8c1d4872163954dfbb/timm/data/loader.py#L209-L238
+    """
+    DataLoader that maintains worker processes across epochs for better performance.
+
+    Solves the bug where worker processes are reinitialized at each epoch, improving
+    training speed for datasets with expensive worker initialization.
+
+    Based on discussions:
+    - https://discuss.pytorch.org/t/enumerate-dataloader-slow/87778
+    - https://github.com/huggingface/pytorch-image-models
+
+    Example:
+        >>> from torch.utils.data import Dataset
+        >>> dataset = ChunkDataset(...)
+        >>> loader = MultiEpochsDataLoader(dataset, batch_size=32, num_workers=4)
+        >>> for epoch in range(10):
+        ...     for batch in loader:
+        ...         # Process batch
+        ...         pass
     """
 
     def __init__(
@@ -154,7 +196,29 @@ class Exhauster:
 
 class LongCycler:
     """
-    Cycles through trainloaders until the loader with largest size is exhausted.
+    Cycle through multiple dataloaders until the longest one is exhausted.
+
+    This cycler is useful for training on multiple datasets of unequal sizes,
+    ensuring all data from the longest dataset is used. Shorter datasets are
+    repeated cyclically.
+
+    Args:
+        loaders (dict): Dictionary mapping session keys to DataLoader objects.
+
+    Yields:
+        tuple: (session_key, batch) pairs in round-robin fashion.
+
+    Example:
+        >>> loaders = {
+        ...     'session1': DataLoader(dataset1, batch_size=32),
+        ...     'session2': DataLoader(dataset2, batch_size=32)
+        ... }
+        >>> cycler = LongCycler(loaders)
+        >>> for session_key, batch in cycler:
+        ...     print(f"Processing batch from {session_key}")
+
+    Note:
+        Cycles through trainloaders until the loader with largest size is exhausted.
         Needed for dataloaders of unequal size (as in the monkey data).
     """
 
@@ -177,7 +241,29 @@ class LongCycler:
 
 class ShortCycler:
     """
-    Cycles through trainloaders until the loader with smallest size is exhausted.
+    Cycle through multiple dataloaders until the shortest one is exhausted.
+
+    This cycler is useful for training on multiple datasets of unequal sizes
+    when you want to ensure each dataset is sampled equally. Stops when the
+    shortest dataset runs out of batches.
+
+    Args:
+        loaders (dict): Dictionary mapping session keys to DataLoader objects.
+
+    Yields:
+        tuple: (session_key, batch) pairs in round-robin fashion.
+
+    Example:
+        >>> loaders = {
+        ...     'session1': DataLoader(dataset1, batch_size=32),
+        ...     'session2': DataLoader(dataset2, batch_size=32)
+        ... }
+        >>> cycler = ShortCycler(loaders)
+        >>> for session_key, batch in cycler:
+        ...     print(f"Processing batch from {session_key}")
+
+    Note:
+        Cycles through trainloaders until the loader with smallest size is exhausted.
         Needed for dataloaders of unequal size (as in the monkey data).
     """
 
@@ -214,7 +300,34 @@ class _RepeatSampler(object):
 
 
 class SessionConcatDataset(Dataset):
-    """Memory-efficient concatenated dataset that reliably tracks sessions."""
+    """
+    Memory-efficient concatenated dataset that reliably tracks session membership.
+
+    This dataset concatenates multiple session datasets while maintaining information
+    about which session each sample belongs to. It provides efficient indexing and
+    session-based sampling capabilities.
+
+    Args:
+        datasets (list): List of Dataset objects to concatenate.
+        session_names (list, optional): List of session names corresponding to datasets.
+            If None, uses "session_0", "session_1", etc. Defaults to None.
+
+    Attributes:
+        datasets (list): List of individual session datasets.
+        session_names (list): Names of each session.
+        cumulative_sizes (list): Cumulative dataset sizes for efficient indexing.
+        session_indices (dict): Maps session names to (start_idx, end_idx) tuples.
+
+    Example:
+        >>> dataset1 = ChunkDataset("path/to/session1")
+        >>> dataset2 = ChunkDataset("path/to/session2")
+        >>> concat_dataset = SessionConcatDataset(
+        ...     [dataset1, dataset2],
+        ...     session_names=['mouse1', 'mouse2']
+        ... )
+        >>> print(len(concat_dataset))  # Total samples across both sessions
+        >>> sample, session_idx = concat_dataset[0]  # Get first sample with session info
+    """
 
     def __init__(self, datasets, session_names=None):
         """Initialize the concatenated dataset with session tracking."""
@@ -388,11 +501,46 @@ class SessionBatchSampler(Sampler):
 
 class FastSessionDataLoader:
     """
-    An optimized dataloader that ensures:
-    1. Each session appears exactly once before repeating
-    2. The epoch ends when the longest session is exhausted
-    3. Perfect alignment between sessions and batches is maintained
-    4. State is properly tracked and can be restored
+    Optimized dataloader for multi-session datasets with session tracking.
+
+    This dataloader ensures proper session rotation and state management for training
+    on concatenated multi-session datasets. It guarantees that each session appears
+    exactly once per cycle and maintains alignment between sessions and batches.
+
+    Key Features:
+        - Each session appears exactly once before repeating
+        - Epoch ends when the longest session is exhausted
+        - Perfect alignment between sessions and batches
+        - State tracking for reproducibility and checkpoint/resume
+
+    Args:
+        dataset (SessionConcatDataset): The concatenated dataset to load from.
+        batch_size (int, optional): Number of samples per batch. Defaults to 1.
+        shuffle (bool, optional): Whether to shuffle session order. Defaults to False.
+        num_workers (int, optional): Number of worker processes for data loading. Defaults to 0.
+        prefetch_factor (int, optional): Number of batches to prefetch per worker. Defaults to 2.
+        persistent_workers (bool, optional): Keep workers alive between epochs. Defaults to False.
+        seed (int, optional): Random seed for reproducibility. Defaults to None.
+        drop_last (bool, optional): Drop the last incomplete batch if dataset size
+            is not divisible by batch_size. Defaults to False.
+        **kwargs: Additional arguments passed to DataLoader.
+
+    Example:
+        >>> concat_dataset = SessionConcatDataset([dataset1, dataset2], ['s1', 's2'])
+        >>> loader = FastSessionDataLoader(
+        ...     dataset=concat_dataset,
+        ...     batch_size=32,
+        ...     shuffle=True,
+        ...     num_workers=4,
+        ...     seed=42
+        ... )
+        >>> for session_key, batch in loader:
+        ...     print(f"Processing batch from {session_key}")
+        ...     # Train model on batch
+
+    Note:
+        Returns (session_key, batch) tuples during iteration, allowing session-specific
+        processing or loss computation.
     """
 
     def __init__(
