@@ -19,6 +19,8 @@ Default YAML configuration
         - responses
         - eye_tracker
         - treadmill
+        - timestamps
+      normalize_timestamps: true
       modality_config:
         screen:
           keep_nans: false
