@@ -28,26 +28,26 @@ def get_multisession_dataloader(
 ) -> DataLoader:
     """
     Create a multisession dataloader from a list of paths and corresponding configs.
-    
+
     This function creates individual dataloaders for each session and cycles through them,
     providing data from different sessions in a round-robin fashion.
-    
+
     Args:
         paths (List[str]): List of paths to the dataset folders. Each path should point
             to a folder containing experimental data for a single session.
-        configs (Union[DictConfig, Dict, List[Union[DictConfig, Dict]]], optional): 
-            Configuration for each dataset. If a single config is provided, it will be 
-            applied to all datasets. If a list is provided, it should match the length 
+        configs (Union[DictConfig, Dict, List[Union[DictConfig, Dict]]], optional):
+            Configuration for each dataset. If a single config is provided, it will be
+            applied to all datasets. If a list is provided, it should match the length
             of paths. Each config should contain 'dataset' and 'dataloader' keys.
             Defaults to None.
         shuffle_keys (bool, optional): Whether to shuffle the order of session keys
             when cycling through dataloaders. Defaults to False.
         **kwargs: Additional keyword arguments for dataset and dataloader configuration.
             If 'config' is provided in kwargs, it will be used as configs parameter.
-    
+
     Returns:
         DataLoader: A LongCycler dataloader that cycles through all session dataloaders.
-    
+
     Example:
         >>> paths = ['path/to/session1', 'path/to/session2']
         >>> config = {'dataset': {...}, 'dataloader': {'batch_size': 32}}
@@ -91,10 +91,10 @@ def get_multisession_concat_dataloader(
 ) -> "FastSessionDataLoader":
     """
     Create a multi-session dataloader that concatenates all sessions into a single dataset.
-    
+
     Unlike get_multisession_dataloader which cycles through sessions, this function
     concatenates all sessions into a single dataset and returns (session_key, batch) pairs.
-    
+
     Args:
         paths (List[str]): List of paths to dataset folders. Each path should point
             to a folder containing experimental data for a single session.
@@ -109,11 +109,11 @@ def get_multisession_concat_dataloader(
             Defaults to None.
         **kwargs: Additional keyword arguments. If 'config' is provided, it will be
             used as configs parameter.
-    
+
     Returns:
         FastSessionDataLoader: A dataloader that returns (session_key, batch) tuples,
             or None if no valid datasets are found.
-    
+
     Example:
         >>> paths = ['path/to/session1', 'path/to/session2']
         >>> config = {'dataset': {...}}

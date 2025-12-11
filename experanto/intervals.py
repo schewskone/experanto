@@ -7,14 +7,14 @@ import numpy as np
 class TimeInterval(typing.NamedTuple):
     """
     Represents a time interval with start and end points.
-    
+
     A TimeInterval is an immutable object representing a continuous period of time,
     used for tracking valid data ranges and filtering time-based data.
-    
+
     Attributes:
         start (float): Start time of the interval in seconds.
         end (float): End time of the interval in seconds.
-    
+
     Example:
         >>> interval = TimeInterval(start=0.0, end=10.0)
         >>> print(5.0 in interval)  # True
@@ -22,6 +22,7 @@ class TimeInterval(typing.NamedTuple):
         >>> times = np.array([0, 5, 10, 15])
         >>> valid_indices = interval.intersect(times)
     """
+
     start: float
     end: float
 
@@ -33,13 +34,13 @@ class TimeInterval(typing.NamedTuple):
     ) -> "TimeInterval":
         """
         Find the intersection between this interval and another interval.
-        
+
         Args:
             other_interval (TimeInterval): The other time interval to intersect with.
-        
+
         Returns:
             TimeInterval or None: The intersection interval if it exists, None otherwise.
-        
+
         Example:
             >>> interval1 = TimeInterval(0, 10)
             >>> interval2 = TimeInterval(5, 15)
@@ -59,13 +60,13 @@ class TimeInterval(typing.NamedTuple):
     def intersect(self, times: np.ndarray) -> np.ndarray:
         """
         Find indices of time points that fall within this interval.
-        
+
         Args:
             times (np.ndarray): Array of time points to check.
-        
+
         Returns:
             np.ndarray: Array of indices where times fall within [start, end].
-        
+
         Example:
             >>> interval = TimeInterval(5.0, 10.0)
             >>> times = np.array([0, 5, 7, 10, 15])

@@ -19,15 +19,15 @@ from .intervals import TimeInterval
 class Interpolator:
     """
     Base class for interpolating experimental data at arbitrary time points.
-    
+
     Interpolators provide a unified interface for accessing data from different recording
     modalities (screen stimuli, neural responses, behavioral data) at specified timestamps.
     """
-    
+
     def __init__(self, root_folder: str) -> None:
         """
         Initialize an Interpolator.
-        
+
         Args:
             root_folder (str): Path to the folder containing the modality data and meta.yml file.
         """
@@ -40,7 +40,7 @@ class Interpolator:
     def load_meta(self):
         """
         Load metadata from the meta.yml file in the root folder.
-        
+
         Returns:
             dict: Metadata dictionary containing information like sampling_rate, start_time,
                 end_time, modality, and data shape.
@@ -67,24 +67,24 @@ class Interpolator:
     def create(root_folder: str, cache_data: bool = False, **kwargs) -> "Interpolator":
         """
         Factory method to create the appropriate Interpolator subclass based on modality.
-        
+
         This method reads the meta.yml file to determine the data modality and instantiates
         the corresponding interpolator class.
-        
+
         Args:
             root_folder (str): Path to the folder containing modality data.
             cache_data (bool, optional): If True, loads data into memory instead of using
                 memory-mapped files. Defaults to False.
             **kwargs: Additional keyword arguments passed to the specific interpolator constructor.
-        
+
         Returns:
             Interpolator: An instance of the appropriate interpolator subclass
                 (SequenceInterpolator, PhaseShiftedSequenceInterpolator, ScreenInterpolator,
                 or TimeIntervalInterpolator).
-        
+
         Raises:
             ValueError: If the modality is not recognized or supported.
-        
+
         Example:
             >>> interp = Interpolator.create("path/to/responses", cache_data=True)
             >>> values, valid = interp.interpolate(times=np.linspace(0, 1, 100))
@@ -112,10 +112,10 @@ class Interpolator:
     def valid_times(self, times: np.ndarray) -> np.ndarray:
         """
         Get indices of time points that fall within the valid interval.
-        
+
         Args:
             times (np.ndarray): Array of time points to check.
-        
+
         Returns:
             np.ndarray: Array of indices where times are valid.
         """
@@ -130,10 +130,10 @@ class Interpolator:
 class SequenceInterpolator(Interpolator):
     """
     Interpolator for sequential time-series data (e.g., neural responses, behavioral signals).
-    
+
     Supports both nearest-neighbor and linear interpolation modes with optional normalization.
     Data can be loaded from memory-mapped files (.mem) or numpy arrays (.npy).
-    
+
     Example:
         >>> interp = SequenceInterpolator(
         ...     root_folder="path/to/responses",
@@ -144,7 +144,7 @@ class SequenceInterpolator(Interpolator):
         >>> times = np.linspace(0, 10, 100)
         >>> values, valid = interp.interpolate(times)
     """
-    
+
     def __init__(
         self,
         root_folder: str,
@@ -158,7 +158,7 @@ class SequenceInterpolator(Interpolator):
     ) -> None:
         """
         Initialize a SequenceInterpolator.
-        
+
         Args:
             root_folder (str): Path to the folder containing sequence data.
             cache_data (bool, optional): If True, converts memory-mapped data to in-memory
@@ -241,15 +241,15 @@ class SequenceInterpolator(Interpolator):
     def interpolate(self, times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate sequence data at specified time points.
-        
+
         Args:
             times (np.ndarray): Array of time points (in seconds) at which to interpolate.
-        
+
         Returns:
             tuple: A tuple of (data, valid_mask) where:
                 - data: Interpolated values of shape (n_valid_times, n_signals)
                 - valid_mask: Boolean mask indicating which requested times have valid data
-        
+
         Note:
             The interpolation method (nearest_neighbor or linear) is determined by the
             interpolation_mode parameter set during initialization.

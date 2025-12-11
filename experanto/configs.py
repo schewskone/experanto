@@ -18,7 +18,7 @@ Example:
     >>> from experanto.configs import DEFAULT_MODALITY_CONFIG
     >>> # Use default config
     >>> dataset = ChunkDataset("path/to/data", modality_config=DEFAULT_MODALITY_CONFIG)
-    >>> 
+    >>>
     >>> # Or customize it
     >>> custom_config = DEFAULT_MODALITY_CONFIG.copy()
     >>> custom_config['screen']['sampling_rate'] = 60.0

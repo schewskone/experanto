@@ -35,10 +35,10 @@ DEFAULT_MODALITY_CONFIG = dict()
 class SimpleChunkedDataset(Dataset):
     """
     A simple dataset that chunks experimental data into fixed-size temporal segments.
-    
+
     This dataset loads data from an experiment folder and divides it into consecutive
     chunks of fixed duration, useful for training on temporal sequences.
-    
+
     Example:
         >>> dataset = SimpleChunkedDataset(
         ...     root_folder="path/to/experiment",
@@ -48,7 +48,7 @@ class SimpleChunkedDataset(Dataset):
         >>> print(f"Dataset has {len(dataset)} chunks")
         >>> data = dataset[0]  # Get first chunk
     """
-    
+
     def __init__(
         self,
         root_folder: str,
@@ -58,7 +58,7 @@ class SimpleChunkedDataset(Dataset):
     ) -> None:
         """
         Initialize a SimpleChunkedDataset.
-        
+
         Args:
             root_folder (str): Path to the experiment data folder containing device subfolders.
             sampling_rate (float): Sampling rate in Hz for data interpolation (e.g., 30.0 for 30 Hz).
@@ -101,11 +101,11 @@ class SimpleChunkedDataset(Dataset):
 class ChunkDataset(Dataset):
     """
     Advanced dataset for chunking experimental data with flexible modality configurations.
-    
+
     ChunkDataset provides sophisticated control over data loading, including per-modality
     sampling rates, transforms, filtering based on experimental conditions, and handling
     of multiple synchronized data streams (screen, neural responses, eye tracking, etc.).
-    
+
     Example:
         >>> config = {
         ...     'screen': {
@@ -129,7 +129,7 @@ class ChunkDataset(Dataset):
         ...     cache_data=True
         ... )
     """
-    
+
     def __init__(
         self,
         root_folder: str,
@@ -147,7 +147,7 @@ class ChunkDataset(Dataset):
     ) -> None:
         """
         Initialize a ChunkDataset with advanced configuration options.
-        
+
         Args:
             root_folder (str): Path to the experiment data folder.
             global_sampling_rate (float, optional): Global sampling rate in Hz that overrides
@@ -173,12 +173,12 @@ class ChunkDataset(Dataset):
                 from start/end times to avoid boundary issues. Defaults to 0.5.
             interpolate_precision (int, optional): Number of decimal digits to keep for time values
                 to ensure consistent interpolation results. Defaults to 5.
-        
+
         Modality Config Structure:
             The modality_config is a nested dictionary with the following structure for each device:
-            
+
             .. code-block:: python
-            
+
                 {
                     'screen': {
                         'sampling_rate': 30.0,  # Hz

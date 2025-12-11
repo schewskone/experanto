@@ -17,16 +17,16 @@ log = logging.getLogger(__name__)
 class Experiment:
     """
     Loads and manages experimental data from multiple recording devices.
-    
-    The Experiment class handles loading data from different modalities (e.g., screen, eye tracker, 
+
+    The Experiment class handles loading data from different modalities (e.g., screen, eye tracker,
     treadmill, neural responses) and provides unified access to interpolated data across devices.
-    
+
     Example:
         >>> from experanto import Experiment
         >>> exp = Experiment(root_folder="path/to/data", cache_data=True)
         >>> values, valid = exp.interpolate(times=[0.0, 0.1, 0.2], device="screen")
     """
-    
+
     def __init__(
         self,
         root_folder: str,
@@ -35,16 +35,16 @@ class Experiment:
     ) -> None:
         """
         Initialize an Experiment with data from a root folder.
-        
+
         Args:
             root_folder (str): Path to the data folder containing device subfolders.
-                Each subfolder should correspond to a recording modality (e.g., 'screen', 
+                Each subfolder should correspond to a recording modality (e.g., 'screen',
                 'eye_tracker', 'responses').
             modality_config (dict, optional): Configuration dictionary for each modality.
-                Keys are device names (e.g., 'screen', 'eye_tracker') and values are 
+                Keys are device names (e.g., 'screen', 'eye_tracker') and values are
                 configuration dictionaries containing 'interpolation' parameters.
                 Defaults to DEFAULT_MODALITY_CONFIG.
-            cache_data (bool, optional): If True, loads and keeps all trial data in memory 
+            cache_data (bool, optional): If True, loads and keeps all trial data in memory
                 for faster access. If False, uses memory-mapped files when available.
                 Defaults to False.
         """
@@ -80,7 +80,7 @@ class Experiment:
     def device_names(self):
         """
         Get the names of all available recording devices.
-        
+
         Returns:
             tuple: Tuple of device names (e.g., ('screen', 'eye_tracker', 'responses')).
         """
@@ -89,24 +89,24 @@ class Experiment:
     def interpolate(self, times: slice, device=None) -> tuple[np.ndarray, np.ndarray]:
         """
         Interpolate data at specified time points for one or all devices.
-        
+
         Args:
             times (slice or np.ndarray): Time points at which to interpolate data.
                 Can be a numpy array of timestamps or a slice object.
             device (str, optional): Name of the specific device to interpolate.
                 If None, interpolates data for all available devices. Defaults to None.
-        
+
         Returns:
             tuple: A tuple of (values, valid) where:
-                - values: Interpolated data. If device is None, returns dict with device names 
+                - values: Interpolated data. If device is None, returns dict with device names
                   as keys. Otherwise, returns numpy array.
                 - valid: Boolean mask indicating which time points have valid data.
-        
+
         Example:
             >>> # Interpolate all devices
             >>> values, valid = exp.interpolate(times=np.linspace(0, 1, 100))
             >>> screen_data = values['screen']
-            >>> 
+            >>>
             >>> # Interpolate specific device
             >>> values, valid = exp.interpolate(times=np.linspace(0, 1, 100), device='screen')
         """
@@ -123,10 +123,10 @@ class Experiment:
     def get_valid_range(self, device_name) -> tuple:
         """
         Get the valid time range for a specific device.
-        
+
         Args:
             device_name (str): Name of the device (e.g., 'screen', 'eye_tracker').
-        
+
         Returns:
             tuple: A tuple of (start_time, end_time) representing the valid time interval
                 for the specified device in seconds.

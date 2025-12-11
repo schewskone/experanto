@@ -11,30 +11,31 @@ from experanto.intervals import (
 def nan_filter(vicinity=0.05):
     """
     Create a filter that identifies valid time intervals excluding regions near NaN values.
-    
+
     This filter detects NaN values in sequence data and marks surrounding time intervals
     as invalid to avoid using corrupted or unreliable data near gaps.
-    
+
     Args:
         vicinity (float, optional): Time window in seconds around each NaN to mark as invalid.
             For example, vicinity=0.05 marks 50ms before and after each NaN as invalid.
             Defaults to 0.05.
-    
+
     Returns:
         callable: A filter function that takes a SequenceInterpolator and returns a list
             of valid TimeInterval objects.
-    
+
     Example:
         >>> from experanto.interpolators import SequenceInterpolator
         >>> filter_fn = nan_filter(vicinity=0.1)  # 100ms around NaNs
         >>> interpolator = SequenceInterpolator("path/to/data")
         >>> valid_intervals = filter_fn(interpolator)
         >>> # Use valid_intervals to exclude problematic time regions
-    
+
     Note:
         This filter requires a SequenceInterpolator because it uses time_delta internally.
         Other interpolator types don't have this attribute.
     """
+
     def implementation(device_: SequenceInterpolator):
         # requests SequenceInterpolator as uses time_delta internally
         # and other interpolators don't have it

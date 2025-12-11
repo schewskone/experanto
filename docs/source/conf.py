@@ -82,4 +82,3 @@ html_theme_options = {
 
 # Add custom CSS if needed
 # html_css_files = ["custom.css"]
-
