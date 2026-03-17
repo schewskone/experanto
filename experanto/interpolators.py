@@ -17,7 +17,7 @@ import torch
 import yaml
 from numba import njit, prange
 from scipy.ndimage import gaussian_filter1d
-from torchcodec.decoders import VideoDecoder, set_cuda_backend
+from torchcodec.decoders import VideoDecoder
 
 from .intervals import TimeInterval
 
@@ -633,10 +633,9 @@ class ScreenInterpolator(Interpolator):
                     # Assuming ScreenTrial.create or a helper can return just a decoder
                     if self.device == "cuda":
                         # setting backend to beta is recommended for faster performance in torchcodec docs
-                        with set_cuda_backend("beta"):
-                            shared_decoders[data_file_name] = self._initialize_decoder(
-                                data_file_name
-                            )
+                        shared_decoders[data_file_name] = self._initialize_decoder(
+                            data_file_name
+                        )
                     else:
                         shared_decoders[data_file_name] = self._initialize_decoder(
                             data_file_name
